@@ -5,7 +5,6 @@ import groovy.util.logging.Slf4j;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
-import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.RestAssured;
 import io.restassured.path.json.JsonPath;
@@ -19,7 +18,7 @@ import java.util.Map;
 
 @Slf4j
 public class PrepareRequest {
-    RequestSpecification request;
+    public static RequestSpecification request;
     public static Response response;
     public static JsonObject jo;
 
@@ -28,7 +27,7 @@ public class PrepareRequest {
         jo = jsonObject.getAsJsonObject();
     }
 
-    public static String getTypeOfValue(String field) throws Exception {
+    public static String getTypeOfValue(String field) {
         if (jo.get(field).isJsonPrimitive()) {
             if (jo.get(field).getAsJsonPrimitive().isBoolean())
                 return "Boolean";
@@ -41,7 +40,7 @@ public class PrepareRequest {
         return "Wrong";
     }
 
-    public static String getTypeOfValueResponse(String field) throws Exception {
+    public static String getTypeOfValueResponse(String field) {
         JsonPath res = new JsonPath(response.getBody().asString());
         if (res.get(field).getClass().getName().equals("java.lang.Boolean"))
             return "Boolean";
@@ -92,7 +91,7 @@ public class PrepareRequest {
 
     @When("Send Request {string}")
     public void sendRequest(String method) {
-
+        request.body(jo);
         switch (method) {
             case "GET":
                 response = request.get();
@@ -130,9 +129,12 @@ public class PrepareRequest {
                 jo.addProperty(value.get("key"), dataConversionBoolean(value.get("value")));
             }
         }
-        request.body(jo);
 
     }
 
-
+    @Given("Fields Control {string} at {string}")
+    public void fieldsControlAt(String field, String request) throws Exception {
+        jsonEdit(request);
+        jo.remove(field);
+    }
 }

@@ -1,4 +1,4 @@
-Feature: Test Scenarios
+Feature: PostCreateUser Test Scenarios
 
   Scenario: Success Create User Control
     Given Prepare Url "https://reqres.in/api/users"
@@ -7,19 +7,24 @@ Feature: Test Scenarios
       | name | deneme |
       | job  | avare  |
     Given Prepare Headers
-      | key  | value |
-      | abc  | 123   |
-      | abcd | 1234  |
+      | key          | value            |
+      | Content-Type | application/json |
+      | Accept       | */*              |
     When Send Request "POST"
     Then Expected to see 201 status code
     Then Expected to see not null control
       | id |
-
-
-  Scenario: Success Get Single User Control
-    Given Prepare Url "https://reqres.in/api/users/2"
-    When Send Request "GET"
-    Then Expected to see 200 status code
     Then Response Control
-      | path    | value |
-      | data.id | 2     |
+      | path | value  |
+      | name | deneme |
+      | job  | avare  |
+
+  Scenario: Success Create User Control2
+    Given Prepare Url "https://reqres.in/api/users"
+    Given Prepare Headers
+      | key          | value            |
+      | Content-Type | application/json |
+      | Accept       | */*              |
+    Given Fields Control "name" at "CreateUser"
+    When Send Request "POST"
+    Then Expected to see 201 status code
