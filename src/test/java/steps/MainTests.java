@@ -1,10 +1,6 @@
 package steps;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
-import endpoints.Endpoints;
+import com.google.gson.*;
 import groovy.util.logging.Slf4j;
 
 import io.cucumber.datatable.DataTable;
@@ -13,13 +9,10 @@ import io.cucumber.java.en.When;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
-import objects.Pair;
 import org.testng.annotations.Test;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -27,20 +20,54 @@ import java.util.Map;
 public class MainTests {
     RequestSpecification request;
     Response response;
+    JsonObject jo;
 
     @Test
-    public void jsonEdit() throws IOException {
-        //Gson gg = new Gson();
-        //Object aa = gg.fromJson(new FileReader("src/test/java/objects/Request.json"), Object.class);
-        // JsonReader reader = new JsonReader(new FileReader("src/test/java/objects/Request.json"));
-        //FileReader fileReader = new FileReader("src/test/java/objects/Request.json");
-        //String json = "{ \"name\": \"Baeldung\", \"java\": true }";
-        //JsonObject js = new JsonParser().parse(fileReader).getAsJsonObject();
-        //Pair[] reviews = new Gson().fromJson( , Pair[].class);
-        //List<Pair> asList = Arrays.asList(reviews);
+    public void jsonEdit(String path) throws Exception {
+        JsonObject jsonObject = (new JsonParser()).parse(readFileAsString("src/test/java/objects/" + path + ".json")).getAsJsonObject();
+        jo = jsonObject.getAsJsonObject();
+    }
 
-       // System.out.printf(String.valueOf(js.get("key")));
+    public String getTypeOfValue(String field) throws Exception {
+        if (jo.get(field).isJsonPrimitive()) {
+            if (jo.get(field).getAsJsonPrimitive().isBoolean())
+                return "Boolean";
+            if (jo.get(field).getAsJsonPrimitive().isString())
+                return "String";
+            if (jo.get(field).getAsJsonPrimitive().isNumber()) {
+                return "Number";
+            }
+        }
+        return "Wrong";
+    }
 
+    public static String readFileAsString(String file) throws Exception {
+        return new String(Files.readAllBytes(Paths.get(file)));
+    }
+
+    public String dataConversionString(String value) {
+        if (value.equals("null")) {
+            return null;
+        } else if (value.equals("whiteSpace")) {
+            return "      ";
+        } else if (value.equals("noString")) {
+            return "";
+        } else
+            return value;
+    }
+
+    public Integer dataConversionInteger(String value) {
+        if (value.equals("null")) {
+            return null;
+        } else
+            return Integer.valueOf(value);
+    }
+
+    public Boolean dataConversionBoolean(String value) {
+        if (value.equals("null")) {
+            return null;
+        } else
+            return Boolean.valueOf(value);
     }
 
     @Given("Prepare Url {string}")
@@ -52,12 +79,12 @@ public class MainTests {
     @When("Send Request {string}")
     public void sendRequest(String method) {
 
-        switch(method){
+        switch (method) {
             case "GET":
-                 response = request.get();
+                response = request.get();
                 break;
             case "POST":
-                 response = request.post();
+                response = request.post();
                 break;
             case "PUT":
                 response = request.put();
@@ -72,8 +99,26 @@ public class MainTests {
     public void prepareHeaders(DataTable dt) {
         List<Map<String, String>> map = dt.asMaps(String.class, String.class);
         for (int i = 0; i < map.size(); i++) {
-        request.headers(map.get(i).get("key"),map.get(i).get("value"));
+            request.headers(map.get(i).get("key"), map.get(i).get("value"));
         }
+    }
+
+    @Given("Prepare Request Body {string}")
+    public void prepareRequestBody(String path, DataTable dt) throws Exception {
+        List<Map<String, String>> map = dt.asMaps(String.class, String.class);
+        jsonEdit(path);
+        for (Map<String, String> stringStringMap : map) {
+            if (getTypeOfValue(stringStringMap.get("key")).equals("String")) {
+                jo.addProperty(stringStringMap.get("key"), dataConversionString(stringStringMap.get("value")));
+            } else if (getTypeOfValue(stringStringMap.get("key")).equals("Number")) {
+                jo.addProperty(stringStringMap.get("key"), dataConversionInteger(stringStringMap.get("value")));
+            } else if (getTypeOfValue(stringStringMap.get("key")).equals("Boolean")) {
+                jo.addProperty(stringStringMap.get("key"), dataConversionBoolean(stringStringMap.get("value")));
+            }
+        }
+        request.body(jo);
 
     }
+
+
 }
