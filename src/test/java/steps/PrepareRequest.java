@@ -5,11 +5,12 @@ import groovy.util.logging.Slf4j;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.RestAssured;
+import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
-import org.testng.annotations.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -17,18 +18,17 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class MainTests {
+public class PrepareRequest {
     RequestSpecification request;
-    Response response;
-    JsonObject jo;
+    public static Response response;
+    public static JsonObject jo;
 
-    @Test
     public void jsonEdit(String path) throws Exception {
         JsonObject jsonObject = (new JsonParser()).parse(readFileAsString("src/test/java/objects/" + path + ".json")).getAsJsonObject();
         jo = jsonObject.getAsJsonObject();
     }
 
-    public String getTypeOfValue(String field) throws Exception {
+    public static String getTypeOfValue(String field) throws Exception {
         if (jo.get(field).isJsonPrimitive()) {
             if (jo.get(field).getAsJsonPrimitive().isBoolean())
                 return "Boolean";
@@ -41,29 +41,43 @@ public class MainTests {
         return "Wrong";
     }
 
+    public static String getTypeOfValueResponse(String field) throws Exception {
+        JsonPath res = new JsonPath(response.getBody().asString());
+        if (res.get(field).getClass().getName().equals("java.lang.Boolean"))
+            return "Boolean";
+        if (res.get(field).getClass().getName().equals("java.lang.String"))
+            return "String";
+        if (res.get(field).getClass().getName().equals("java.lang.Integer")) {
+            return "Number";
+        }
+        return "Wrong";
+    }
+
     public static String readFileAsString(String file) throws Exception {
         return new String(Files.readAllBytes(Paths.get(file)));
     }
 
-    public String dataConversionString(String value) {
-        if (value.equals("null")) {
-            return null;
-        } else if (value.equals("whiteSpace")) {
-            return "      ";
-        } else if (value.equals("noString")) {
-            return "";
-        } else
-            return value;
+    public static String dataConversionString(String value) {
+        switch (value) {
+            case "null":
+                return null;
+            case "whiteSpace":
+                return "      ";
+            case "noString":
+                return "";
+            default:
+                return value;
+        }
     }
 
-    public Integer dataConversionInteger(String value) {
+    public static Integer dataConversionInteger(String value) {
         if (value.equals("null")) {
             return null;
         } else
             return Integer.valueOf(value);
     }
 
-    public Boolean dataConversionBoolean(String value) {
+    public static Boolean dataConversionBoolean(String value) {
         if (value.equals("null")) {
             return null;
         } else
@@ -98,8 +112,8 @@ public class MainTests {
     @Given("Prepare Headers")
     public void prepareHeaders(DataTable dt) {
         List<Map<String, String>> map = dt.asMaps(String.class, String.class);
-        for (int i = 0; i < map.size(); i++) {
-            request.headers(map.get(i).get("key"), map.get(i).get("value"));
+        for (Map<String, String> value : map) {
+            request.headers(value.get("key"), value.get("value"));
         }
     }
 
@@ -107,13 +121,13 @@ public class MainTests {
     public void prepareRequestBody(String path, DataTable dt) throws Exception {
         List<Map<String, String>> map = dt.asMaps(String.class, String.class);
         jsonEdit(path);
-        for (Map<String, String> stringStringMap : map) {
-            if (getTypeOfValue(stringStringMap.get("key")).equals("String")) {
-                jo.addProperty(stringStringMap.get("key"), dataConversionString(stringStringMap.get("value")));
-            } else if (getTypeOfValue(stringStringMap.get("key")).equals("Number")) {
-                jo.addProperty(stringStringMap.get("key"), dataConversionInteger(stringStringMap.get("value")));
-            } else if (getTypeOfValue(stringStringMap.get("key")).equals("Boolean")) {
-                jo.addProperty(stringStringMap.get("key"), dataConversionBoolean(stringStringMap.get("value")));
+        for (Map<String, String> value : map) {
+            if (getTypeOfValue(value.get("key")).equals("String")) {
+                jo.addProperty(value.get("key"), dataConversionString(value.get("value")));
+            } else if (getTypeOfValue(value.get("key")).equals("Number")) {
+                jo.addProperty(value.get("key"), dataConversionInteger(value.get("value")));
+            } else if (getTypeOfValue(value.get("key")).equals("Boolean")) {
+                jo.addProperty(value.get("key"), dataConversionBoolean(value.get("value")));
             }
         }
         request.body(jo);
