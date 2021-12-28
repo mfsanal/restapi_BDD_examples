@@ -1,13 +1,13 @@
 package steps;
 
-import com.google.gson.*;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
 import groovy.util.logging.Slf4j;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
 import io.restassured.RestAssured;
-import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
@@ -20,28 +20,29 @@ import java.util.Map;
 public class PrepareRequest {
     public static RequestSpecification request;
     public static Response response;
-    public static JsonObject jo;
+    public static io.restassured.path.json.JsonPath type;
+    public static DocumentContext jo;
+
 
     public void jsonEdit(String path) throws Exception {
-        JsonObject jsonObject = (new JsonParser()).parse(readFileAsString("src/test/java/objects/" + path + ".json")).getAsJsonObject();
-        jo = jsonObject.getAsJsonObject();
+        type = new io.restassured.path.json.JsonPath(readFileAsString("src/test/java/objects/" + path + ".json"));
+        jo = JsonPath.parse(readFileAsString("src/test/java/objects/" + path + ".json"));
     }
 
+
     public static String getTypeOfValue(String field) {
-        if (jo.get(field).isJsonPrimitive()) {
-            if (jo.get(field).getAsJsonPrimitive().isBoolean())
-                return "Boolean";
-            if (jo.get(field).getAsJsonPrimitive().isString())
-                return "String";
-            if (jo.get(field).getAsJsonPrimitive().isNumber()) {
-                return "Number";
-            }
+        if (type.get(field).getClass().getName().equals("java.lang.Boolean"))
+            return "Boolean";
+        if (type.get(field).getClass().getName().equals("java.lang.String"))
+            return "String";
+        if (type.get(field).getClass().getName().equals("java.lang.Integer")) {
+            return "Number";
         }
         return "Wrong";
     }
 
     public static String getTypeOfValueResponse(String field) {
-        JsonPath res = new JsonPath(response.getBody().asString());
+        io.restassured.path.json.JsonPath res = new io.restassured.path.json.JsonPath(response.getBody().asString());
         if (res.get(field).getClass().getName().equals("java.lang.Boolean"))
             return "Boolean";
         if (res.get(field).getClass().getName().equals("java.lang.String"))
@@ -91,7 +92,10 @@ public class PrepareRequest {
 
     @When("Send Request {string}")
     public void sendRequest(String method) {
-        request.body(jo);
+        if (jo != null) {
+            request.body(jo.jsonString());
+        }
+
         switch (method) {
             case "GET":
                 response = request.get();
@@ -122,11 +126,11 @@ public class PrepareRequest {
         jsonEdit(path);
         for (Map<String, String> value : map) {
             if (getTypeOfValue(value.get("key")).equals("String")) {
-                jo.addProperty(value.get("key"), dataConversionString(value.get("value")));
+                jo.set(value.get("key"), dataConversionString(value.get("value")));
             } else if (getTypeOfValue(value.get("key")).equals("Number")) {
-                jo.addProperty(value.get("key"), dataConversionInteger(value.get("value")));
+                jo.set(value.get("key"), dataConversionInteger(value.get("value")));
             } else if (getTypeOfValue(value.get("key")).equals("Boolean")) {
-                jo.addProperty(value.get("key"), dataConversionBoolean(value.get("value")));
+                jo.set(value.get("key"), dataConversionBoolean(value.get("value")));
             }
         }
 
@@ -135,6 +139,6 @@ public class PrepareRequest {
     @Given("Fields Control {string} at {string}")
     public void fieldsControlAt(String field, String request) throws Exception {
         jsonEdit(request);
-        jo.remove(field);
+        jo.delete(field);
     }
 }
