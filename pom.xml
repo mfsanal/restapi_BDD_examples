@@ -109,9 +109,10 @@
             <artifactId>json-path</artifactId>
             <version>2.6.0</version>
         </dependency>
-
-
-
-
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-core</artifactId>
+            <version>6.10.4</version>
+        </dependency>
     </dependencies>
 </project>
